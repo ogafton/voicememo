@@ -1011,6 +1011,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  allListsInfo: {
+    backgroundColor: COLORS.cardBackground,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  allListsInfoText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  listSeparator: {
+    height: 1,
+    backgroundColor: COLORS.secondary,
+    marginVertical: 12,
+  },
   // Modal styles
   modalOverlay: {
     flex: 1,
