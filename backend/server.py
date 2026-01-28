@@ -79,13 +79,23 @@ async def ensure_default_list():
 
 
 # List CRUD endpoints
-@api_router.get("/lists", response_model=List[TodoList])
+@api_router.get("/lists")
 async def get_lists():
     await ensure_default_list()
     lists = await db.lists.find().sort("created_at", 1).to_list(100)
-    return [TodoList(**lst) for lst in lists]
+    result = []
+    for i, lst in enumerate(lists):
+        # Add default color if missing
+        if "color" not in lst:
+            lst["color"] = LIST_COLORS[i % len(LIST_COLORS)]
+        # Get active task count for this list
+        active_count = await db.todos.count_documents({"list_id": lst["id"], "completed": False})
+        lst_data = TodoList(**lst).dict()
+        lst_data["active_count"] = active_count
+        result.append(lst_data)
+    return result
 
-@api_router.post("/lists", response_model=TodoList)
+@api_router.post("/lists")
 async def create_list(list_data: TodoListCreate):
     # If this is set as default, unset other defaults
     if list_data.is_default:
@@ -93,7 +103,7 @@ async def create_list(list_data: TodoListCreate):
     
     new_list = TodoList(**list_data.dict())
     await db.lists.insert_one(new_list.dict())
-    return new_list
+    return new_list.dict()
 
 @api_router.put("/lists/{list_id}", response_model=TodoList)
 async def update_list(list_id: str, list_update: TodoListUpdate):
