@@ -162,14 +162,23 @@ export default function TodoApp() {
   };
 
   const confirmDelete = (id: string, text: string) => {
-    Alert.alert(
-      'Șterge Task',
-      `Sigur vrei să ștergi "${text}"?`,
-      [
-        { text: 'Anulează', style: 'cancel' },
-        { text: 'Șterge', style: 'destructive', onPress: () => deleteTodo(id) },
-      ]
-    );
+    if (Platform.OS === 'web') {
+      // Use browser confirm on web
+      const confirmed = window.confirm(`Sigur vrei să ștergi "${text}"?`);
+      if (confirmed) {
+        deleteTodo(id);
+      }
+    } else {
+      // Use native Alert on mobile
+      Alert.alert(
+        'Șterge Task',
+        `Sigur vrei să ștergi "${text}"?`,
+        [
+          { text: 'Anulează', style: 'cancel' },
+          { text: 'Șterge', style: 'destructive', onPress: () => deleteTodo(id) },
+        ]
+      );
+    }
   };
 
   // Voice recognition function - Web only for now
