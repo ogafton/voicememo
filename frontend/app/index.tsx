@@ -535,12 +535,13 @@ export default function TodoApp() {
 
         {/* New List Modal */}
         <Modal visible={showNewListModal} transparent animationType="fade">
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setShowNewListModal(false)}
-          >
-            <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity 
+              style={styles.modalBackdrop} 
+              activeOpacity={1} 
+              onPress={() => setShowNewListModal(false)}
+            />
+            <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Listă nouă</Text>
               
               <TextInput
@@ -572,7 +573,7 @@ export default function TodoApp() {
                 </TouchableOpacity>
               </View>
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
 
         {/* Options Modal */}
