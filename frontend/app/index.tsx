@@ -746,11 +746,32 @@ export default function TodoApp() {
                 autoFocus
               />
               
+              {/* Color Selector */}
+              <Text style={styles.colorSelectorLabel}>Alege culoarea:</Text>
+              <View style={styles.colorSelector}>
+                {LIST_COLORS.map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorOption,
+                      { backgroundColor: color },
+                      newListColor === color && styles.colorOptionSelected
+                    ]}
+                    onPress={() => setNewListColor(color)}
+                  >
+                    {newListColor === color && (
+                      <Ionicons name="checkmark" size={16} color={COLORS.white} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={styles.modalCancelButton}
                   onPress={() => {
                     setNewListName('');
+                    setNewListColor(LIST_COLORS[0]);
                     setShowNewListModal(false);
                   }}
                 >
