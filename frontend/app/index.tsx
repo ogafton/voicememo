@@ -607,14 +607,37 @@ export default function TodoApp() {
               <Text style={styles.modalTitle}>Listele tale</Text>
               
               <ScrollView style={styles.listScrollView}>
+                {/* All Lists Option */}
+                <View style={styles.listItemRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.listItem,
+                      showAllLists && styles.listItemSelected
+                    ]}
+                    onPress={() => {
+                      setShowAllLists(true);
+                      setShowListModal(false);
+                    }}
+                  >
+                    <View style={styles.listItemContent}>
+                      <Ionicons name="layers-outline" size={20} color={showAllLists ? COLORS.white : COLORS.text} style={{ marginRight: 8 }} />
+                      <Text style={styles.listItemText}>Toate listele</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Separator */}
+                <View style={styles.listSeparator} />
+
                 {lists.map((list) => (
                   <View key={list.id} style={styles.listItemRow}>
                     <TouchableOpacity
                       style={[
                         styles.listItem,
-                        selectedList?.id === list.id && styles.listItemSelected
+                        !showAllLists && selectedList?.id === list.id && styles.listItemSelected
                       ]}
                       onPress={() => {
+                        setShowAllLists(false);
                         setSelectedList(list);
                         setShowListModal(false);
                       }}
