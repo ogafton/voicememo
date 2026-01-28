@@ -40,6 +40,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#000"
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Pentru a adăuga task-uri prin voce",
+          "speechRecognitionPermission": "Pentru recunoașterea vocală"
+        }
       ]
     ],
     "experiments": {
