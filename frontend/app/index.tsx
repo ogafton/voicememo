@@ -49,67 +49,44 @@ export default function TodoApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(false);
   
   const recognitionRef = useRef<any>(null);
 
-  // Initialize Speech Recognition
+  // Initialize Speech Recognition for Web only
   useEffect(() => {
-    initializeSpeechRecognition();
-  }, []);
-
-  const initializeSpeechRecognition = async () => {
-    if (Platform.OS === 'web') {
-      // Check if we're in a browser environment
-      if (typeof window !== 'undefined') {
-        try {
-          const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-          
-          if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.lang = 'ro-RO';
-            
-            recognition.onresult = (event: any) => {
-              const transcript = event.results[event.results.length - 1][0].transcript;
-              setInputText(transcript);
-            };
-            
-            recognition.onend = () => {
-              setIsRecording(false);
-            };
-            
-            recognition.onerror = (event: any) => {
-              console.log('Speech recognition error:', event.error);
-              setIsRecording(false);
-            };
-            
-            recognitionRef.current = recognition;
-            setSpeechSupported(true);
-          } else {
-            setSpeechSupported(false);
-          }
-        } catch (error) {
-          console.log('Speech init error:', error);
-          setSpeechSupported(false);
-        }
-      } else {
-        setSpeechSupported(false);
-      }
-    } else {
-      // Native platform - check if expo-speech-recognition is available
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       try {
-        const { ExpoSpeechRecognitionModule } = await import('expo-speech-recognition');
-        if (ExpoSpeechRecognitionModule) {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        
+        if (SpeechRecognition) {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = false;
+          recognition.interimResults = true;
+          recognition.lang = 'ro-RO';
+          
+          recognition.onresult = (event: any) => {
+            const transcript = event.results[event.results.length - 1][0].transcript;
+            setInputText(transcript);
+          };
+          
+          recognition.onend = () => {
+            setIsRecording(false);
+          };
+          
+          recognition.onerror = (event: any) => {
+            console.log('Speech recognition error:', event.error);
+            setIsRecording(false);
+          };
+          
+          recognitionRef.current = recognition;
           setSpeechSupported(true);
         }
       } catch (error) {
-        console.log('Native speech not available:', error);
-        setSpeechSupported(false);
+        console.log('Speech init error:', error);
       }
     }
-  };
+  }, []);
 
   // Fetch todos on mount
   useEffect(() => {
@@ -195,14 +172,13 @@ export default function TodoApp() {
     );
   };
 
-  // Voice recognition function
-  const handleVoiceButton = async () => {
+  // Voice recognition function - Web only for now
+  const handleVoiceButton = () => {
     if (Platform.OS === 'web') {
-      // Web platform - use Web Speech API
       if (!recognitionRef.current) {
         Alert.alert(
           'Funcție indisponibilă',
-          'Recunoașterea vocală nu este disponibilă în acest browser.\n\nÎncearcă:\n• Chrome sau Edge pe desktop\n• Sau folosește aplicația pe telefon prin Expo Go'
+          'Recunoașterea vocală nu este disponibilă în acest browser.\n\nPentru comandă vocală:\n• Folosește Chrome sau Edge\n• Sau instalează aplicația pe telefon'
         );
         return;
       }
@@ -220,52 +196,19 @@ export default function TodoApp() {
           setIsRecording(true);
         } catch (error: any) {
           console.log('Error starting recognition:', error);
-          if (error.message?.includes('already started')) {
-            recognitionRef.current.stop();
-            setIsRecording(false);
-          } else {
-            Alert.alert(
-              'Permisiune necesară', 
-              'Te rugăm să permiți accesul la microfon din setările browser-ului.'
-            );
-          }
+          setIsRecording(false);
+          Alert.alert(
+            'Info', 
+            'Apasă pe butonul de microfon și vorbește.\n\nDacă nu funcționează, permite accesul la microfon din setările browser-ului.'
+          );
         }
       }
     } else {
-      // Native platform - use expo-speech-recognition
-      try {
-        const { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } = await import('expo-speech-recognition');
-        
-        if (isRecording) {
-          ExpoSpeechRecognitionModule.stop();
-          setIsRecording(false);
-        } else {
-          const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-          
-          if (!result.granted) {
-            Alert.alert(
-              'Permisiune necesară',
-              'Te rugăm să permiți accesul la microfon pentru a folosi comanda vocală.'
-            );
-            return;
-          }
-
-          // Set up result listener
-          ExpoSpeechRecognitionModule.start({
-            lang: 'ro-RO',
-            interimResults: true,
-            maxAlternatives: 1,
-            continuous: false,
-          });
-          setIsRecording(true);
-        }
-      } catch (error) {
-        console.log('Native speech recognition error:', error);
-        Alert.alert(
-          'Funcție indisponibilă', 
-          'Recunoașterea vocală nu este disponibilă.\n\nPoți adăuga task-uri manual folosind câmpul de text.'
-        );
-      }
+      // Native - show info about future support
+      Alert.alert(
+        'Comandă vocală',
+        'Pentru a folosi comanda vocală pe telefon, trebuie să instalezi aplicația.\n\nMomentum, poți adăuga task-uri manual.'
+      );
     }
   };
 
@@ -437,8 +380,7 @@ export default function TodoApp() {
             <TouchableOpacity
               style={[
                 styles.voiceButton,
-                isRecording && styles.voiceButtonRecording,
-                speechSupported === false && styles.voiceButtonDisabled
+                isRecording && styles.voiceButtonRecording
               ]}
               onPress={handleVoiceButton}
               activeOpacity={0.7}
@@ -446,7 +388,7 @@ export default function TodoApp() {
               <Ionicons
                 name={isRecording ? 'stop' : 'mic'}
                 size={24}
-                color={isRecording ? COLORS.white : (speechSupported === false ? COLORS.textSecondary : COLORS.primary)}
+                color={isRecording ? COLORS.white : COLORS.primary}
               />
             </TouchableOpacity>
             
@@ -659,9 +601,6 @@ const styles = StyleSheet.create({
   },
   voiceButtonRecording: {
     backgroundColor: COLORS.recording,
-  },
-  voiceButtonDisabled: {
-    opacity: 0.5,
   },
   input: {
     flex: 1,
