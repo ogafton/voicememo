@@ -1142,6 +1142,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  listColorIndicator: {
+    width: 6,
+    height: 40,
+    borderRadius: 3,
+    marginRight: 8,
+  },
   listItem: {
     flex: 1,
     padding: 16,
@@ -1160,6 +1166,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.text,
   },
+  activeCountText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
   defaultBadge: {
     backgroundColor: COLORS.normal,
     paddingHorizontal: 8,
@@ -1177,6 +1187,29 @@ const styles = StyleSheet.create({
   },
   deleteListButton: {
     padding: 12,
+  },
+  colorSelectorLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  colorSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  colorOption: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorOptionSelected: {
+    borderWidth: 3,
+    borderColor: COLORS.white,
   },
   newListButton: {
     flexDirection: 'row',
