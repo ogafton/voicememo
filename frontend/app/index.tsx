@@ -433,39 +433,57 @@ export default function TodoApp() {
     }
   };
 
+  // Get list info by id
+  const getListInfo = (listId: string) => {
+    return lists.find(l => l.id === listId);
+  };
+
   const filteredTodos = todos.filter(todo => {
     if (filter === 'active') return !todo.completed;
     if (filter === 'completed') return todo.completed;
     return true;
   });
 
-  const renderTodoItem = ({ item }: { item: Todo }) => (
-    <View style={[styles.todoItem, item.completed && styles.todoItemCompleted]}>
-      <TouchableOpacity style={styles.checkbox} onPress={() => toggleTodo(item.id)}>
-        <View style={[
-          styles.checkboxInner,
-          item.completed && styles.checkboxChecked,
-          { borderColor: getPriorityColor(item.priority) }
-        ]}>
-          {item.completed && <Ionicons name="checkmark" size={16} color={COLORS.white} />}
+  const renderTodoItem = ({ item }: { item: Todo }) => {
+    const listInfo = getListInfo(item.list_id);
+    
+    return (
+      <View style={[styles.todoItem, item.completed && styles.todoItemCompleted]}>
+        <TouchableOpacity style={styles.checkbox} onPress={() => toggleTodo(item.id)}>
+          <View style={[
+            styles.checkboxInner,
+            item.completed && styles.checkboxChecked,
+            { borderColor: getPriorityColor(item.priority) }
+          ]}>
+            {item.completed && <Ionicons name="checkmark" size={16} color={COLORS.white} />}
+          </View>
+        </TouchableOpacity>
+        
+        <View style={styles.todoContent}>
+          <Text style={[styles.todoText, item.completed && styles.todoTextCompleted]}>
+            {item.text}
+          </Text>
+          <View style={styles.todoMeta}>
+            <View style={styles.priorityBadge}>
+              <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(item.priority) }]} />
+              <Text style={styles.priorityText}>{getPriorityLabel(item.priority)}</Text>
+            </View>
+            {/* Show list name when viewing all lists */}
+            {showAllLists && listInfo && (
+              <View style={[styles.listBadge, { backgroundColor: listInfo.color + '30' }]}>
+                <View style={[styles.listDot, { backgroundColor: listInfo.color }]} />
+                <Text style={[styles.listBadgeText, { color: listInfo.color }]}>{listInfo.name}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </TouchableOpacity>
-      
-      <View style={styles.todoContent}>
-        <Text style={[styles.todoText, item.completed && styles.todoTextCompleted]}>
-          {item.text}
-        </Text>
-        <View style={styles.priorityBadge}>
-          <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(item.priority) }]} />
-          <Text style={styles.priorityText}>{getPriorityLabel(item.priority)}</Text>
-        </View>
+        
+        <TouchableOpacity style={styles.deleteButton} onPress={() => deleteTodo(item.id)}>
+          <Ionicons name="trash-outline" size={22} color={COLORS.urgent} />
+        </TouchableOpacity>
       </View>
-      
-      <TouchableOpacity style={styles.deleteButton} onPress={() => deleteTodo(item.id)}>
-        <Ionicons name="trash-outline" size={22} color={COLORS.urgent} />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
