@@ -148,6 +148,7 @@ export default function TodoApp() {
   const [showListModal, setShowListModal] = useState(false);
   const [showNewListModal, setShowNewListModal] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [newListColor, setNewListColor] = useState(LIST_COLORS[0]);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   
   const recognitionRef = useRef<any>(null);
