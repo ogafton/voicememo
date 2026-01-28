@@ -662,6 +662,9 @@ export default function TodoApp() {
 
                 {lists.map((list) => (
                   <View key={list.id} style={styles.listItemRow}>
+                    {/* Color indicator */}
+                    <View style={[styles.listColorIndicator, { backgroundColor: list.color || '#4ecdc4' }]} />
+                    
                     <TouchableOpacity
                       style={[
                         styles.listItem,
@@ -674,7 +677,10 @@ export default function TodoApp() {
                       }}
                     >
                       <View style={styles.listItemContent}>
-                        <Text style={styles.listItemText}>{list.name}</Text>
+                        <Text style={styles.listItemText}>
+                          {list.name} 
+                          <Text style={styles.activeCountText}> ({list.active_count || 0})</Text>
+                        </Text>
                         {list.is_default && (
                           <View style={styles.defaultBadge}>
                             <Text style={styles.defaultBadgeText}>Default</Text>
