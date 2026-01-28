@@ -27,18 +27,24 @@ api_router = APIRouter(prefix="/api")
 
 
 # Define Models
+# Available colors for lists
+LIST_COLORS = ['#e94560', '#4ecdc4', '#95afc0', '#ff6b6b', '#a29bfe', '#fd79a8', '#00b894', '#fdcb6e', '#6c5ce7', '#00cec9']
+
 class TodoList(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
+    color: str = '#4ecdc4'  # Default turquoise color
     is_default: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class TodoListCreate(BaseModel):
     name: str
+    color: str = '#4ecdc4'
     is_default: bool = False
 
 class TodoListUpdate(BaseModel):
     name: Optional[str] = None
+    color: Optional[str] = None
     is_default: Optional[bool] = None
 
 class TodoItem(BaseModel):
