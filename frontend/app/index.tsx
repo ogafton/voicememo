@@ -52,6 +52,84 @@ interface Todo {
   created_at: string;
 }
 
+// Parse voice command to extract list name, priority, and task text
+interface ParsedCommand {
+  taskText: string;
+  listName: string | null;
+  priority: 'urgent' | 'normal' | 'low' | null;
+}
+
+const parseVoiceCommand = (text: string, availableLists: TodoList[]): ParsedCommand => {
+  let taskText = text.trim();
+  let listName: string | null = null;
+  let priority: 'urgent' | 'normal' | 'low' | null = null;
+  
+  // Normalize text for matching (lowercase, remove diacritics for comparison)
+  const normalizedText = taskText.toLowerCase();
+  
+  // Detect priority keywords
+  const priorityPatterns = [
+    { pattern: /\burgent\b/i, value: 'urgent' as const },
+    { pattern: /\bimportant\b/i, value: 'urgent' as const },
+    { pattern: /\bprioritare\b/i, value: 'urgent' as const },
+    { pattern: /\bnormal\b/i, value: 'normal' as const },
+    { pattern: /\bscăzut\b/i, value: 'low' as const },
+    { pattern: /\bscazut\b/i, value: 'low' as const },
+    { pattern: /\bmic\b/i, value: 'low' as const },
+  ];
+  
+  for (const { pattern, value } of priorityPatterns) {
+    if (pattern.test(taskText)) {
+      priority = value;
+      taskText = taskText.replace(pattern, '').trim();
+      break;
+    }
+  }
+  
+  // Detect list name patterns
+  // Patterns: "în lista X:", "în X:", "la lista X:", "adaugă în X"
+  const listPatterns = [
+    /(?:în|la|pentru)\s+(?:lista\s+)?["""]?([^:""",]+)["""]?\s*[,:]\s*/i,
+    /(?:adaugă|adauga|pune)\s+(?:în|la|pentru)\s+(?:lista\s+)?["""]?([^:""",]+)["""]?\s*[,:]\s*/i,
+    /(?:în|la)\s+(?:lista\s+)?["""]?([^:""",]+)["""]?\s*$/i,
+  ];
+  
+  for (const pattern of listPatterns) {
+    const match = taskText.match(pattern);
+    if (match && match[1]) {
+      const potentialListName = match[1].trim().toLowerCase();
+      
+      // Find matching list (case insensitive, partial match)
+      const matchedList = availableLists.find(list => {
+        const listNameLower = list.name.toLowerCase();
+        return listNameLower === potentialListName || 
+               listNameLower.includes(potentialListName) ||
+               potentialListName.includes(listNameLower);
+      });
+      
+      if (matchedList) {
+        listName = matchedList.name;
+        // Remove the list part from task text
+        taskText = taskText.replace(match[0], '').trim();
+        break;
+      }
+    }
+  }
+  
+  // Clean up task text
+  taskText = taskText
+    .replace(/^[,:.\s]+/, '')  // Remove leading punctuation
+    .replace(/[,:.\s]+$/, '')  // Remove trailing punctuation
+    .trim();
+  
+  // Capitalize first letter
+  if (taskText.length > 0) {
+    taskText = taskText.charAt(0).toUpperCase() + taskText.slice(1);
+  }
+  
+  return { taskText, listName, priority };
+};
+
 export default function TodoApp() {
   const [lists, setLists] = useState<TodoList[]>([]);
   const [selectedList, setSelectedList] = useState<TodoList | null>(null);
