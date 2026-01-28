@@ -164,7 +164,18 @@ async def get_todos(list_id: Optional[str] = None):
     if list_id:
         query["list_id"] = list_id
     todos = await db.todos.find(query).sort("created_at", -1).to_list(1000)
-    return [TodoItem(**todo) for todo in todos]
+    result = []
+    for todo in todos:
+        # Handle old todos without list_id
+        if "list_id" not in todo or not todo["list_id"]:
+            # Assign to default list
+            default_list = await db.lists.find_one({"is_default": True})
+            if default_list:
+                todo["list_id"] = default_list["id"]
+            else:
+                continue  # Skip if no default list
+        result.append(TodoItem(**todo))
+    return result
 
 @api_router.put("/todos/{todo_id}", response_model=TodoItem)
 async def update_todo(todo_id: str, todo_update: TodoUpdate):
