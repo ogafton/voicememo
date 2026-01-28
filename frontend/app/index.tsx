@@ -951,6 +951,12 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: COLORS.textSecondary,
   },
+  todoMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   priorityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -964,6 +970,23 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 12,
     color: COLORS.textSecondary,
+  },
+  listBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  listDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  listBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   deleteButton: {
     padding: 8,
