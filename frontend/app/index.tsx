@@ -133,6 +133,7 @@ const parseVoiceCommand = (text: string, availableLists: TodoList[]): ParsedComm
 export default function TodoApp() {
   const [lists, setLists] = useState<TodoList[]>([]);
   const [selectedList, setSelectedList] = useState<TodoList | null>(null);
+  const [showAllLists, setShowAllLists] = useState(false); // New state for "All lists"
   const [todos, setTodos] = useState<Todo[]>([]);
   const [inputText, setInputText] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<'urgent' | 'normal' | 'low'>('normal');
