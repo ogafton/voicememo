@@ -535,66 +535,74 @@ export default function TodoApp() {
           }
         />
 
-        {/* Input Section */}
-        <View style={styles.inputSection}>
-          <View style={styles.prioritySelector}>
-            {(['urgent', 'normal', 'low'] as const).map((priority) => (
-              <TouchableOpacity
-                key={priority}
-                style={[
-                  styles.priorityButton,
-                  selectedPriority === priority && { backgroundColor: getPriorityColor(priority) }
-                ]}
-                onPress={() => setSelectedPriority(priority)}
-              >
-                <Text style={[
-                  styles.priorityButtonText,
-                  selectedPriority === priority && styles.priorityButtonTextActive
-                ]}>
-                  {getPriorityLabel(priority)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.inputRow}>
-            <TouchableOpacity
-              style={[styles.voiceButton, isRecording && styles.voiceButtonRecording]}
-              onPress={handleVoiceButton}
-            >
-              <Ionicons
-                name={isRecording ? 'stop' : 'mic'}
-                size={24}
-                color={isRecording ? COLORS.white : COLORS.primary}
-              />
-            </TouchableOpacity>
-            
-            <TextInput
-              style={styles.input}
-              placeholder={isRecording ? 'Ascult...' : 'Adaugă un task nou...'}
-              placeholderTextColor={isRecording ? COLORS.recording : COLORS.textSecondary}
-              value={inputText}
-              onChangeText={setInputText}
-              onSubmitEditing={addTodo}
-              returnKeyType="done"
-            />
-            
-            <TouchableOpacity
-              style={[styles.addButton, !inputText.trim() && styles.addButtonDisabled]}
-              onPress={addTodo}
-              disabled={!inputText.trim()}
-            >
-              <Ionicons name="add" size={28} color={COLORS.white} />
-            </TouchableOpacity>
-          </View>
-
-          {isRecording && (
-            <View style={styles.recordingIndicator}>
-              <View style={styles.recordingDot} />
-              <Text style={styles.recordingText}>Înregistrez... Vorbește acum!</Text>
+        {/* Input Section - Hidden when viewing all lists */}
+        {!showAllLists ? (
+          <View style={styles.inputSection}>
+            <View style={styles.prioritySelector}>
+              {(['urgent', 'normal', 'low'] as const).map((priority) => (
+                <TouchableOpacity
+                  key={priority}
+                  style={[
+                    styles.priorityButton,
+                    selectedPriority === priority && { backgroundColor: getPriorityColor(priority) }
+                  ]}
+                  onPress={() => setSelectedPriority(priority)}
+                >
+                  <Text style={[
+                    styles.priorityButtonText,
+                    selectedPriority === priority && styles.priorityButtonTextActive
+                  ]}>
+                    {getPriorityLabel(priority)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
-        </View>
+
+            <View style={styles.inputRow}>
+              <TouchableOpacity
+                style={[styles.voiceButton, isRecording && styles.voiceButtonRecording]}
+                onPress={handleVoiceButton}
+              >
+                <Ionicons
+                  name={isRecording ? 'stop' : 'mic'}
+                  size={24}
+                  color={isRecording ? COLORS.white : COLORS.primary}
+                />
+              </TouchableOpacity>
+              
+              <TextInput
+                style={styles.input}
+                placeholder={isRecording ? 'Ascult...' : 'Adaugă un task nou...'}
+                placeholderTextColor={isRecording ? COLORS.recording : COLORS.textSecondary}
+                value={inputText}
+                onChangeText={setInputText}
+                onSubmitEditing={addTodo}
+                returnKeyType="done"
+              />
+              
+              <TouchableOpacity
+                style={[styles.addButton, !inputText.trim() && styles.addButtonDisabled]}
+                onPress={addTodo}
+                disabled={!inputText.trim()}
+              >
+                <Ionicons name="add" size={28} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+
+            {isRecording && (
+              <View style={styles.recordingIndicator}>
+                <View style={styles.recordingDot} />
+                <Text style={styles.recordingText}>Înregistrez... Vorbește acum!</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={styles.allListsInfo}>
+            <Text style={styles.allListsInfoText}>
+              Selectează o listă specifică pentru a adăuga task-uri
+            </Text>
+          </View>
+        )}
 
         {/* List Selection Modal */}
         <Modal visible={showListModal} transparent animationType="fade">
