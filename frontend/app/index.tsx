@@ -482,13 +482,17 @@ export default function TodoApp() {
         {/* Header with List Selector */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.listSelector} onPress={() => setShowListModal(true)}>
-            <Text style={styles.headerTitle}>{selectedList?.name || 'Selectează listă'}</Text>
+            <Text style={styles.headerTitle}>
+              {showAllLists ? 'Toate listele' : (selectedList?.name || 'Selectează listă')}
+            </Text>
             <Ionicons name="chevron-down" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerButton} onPress={() => setShowOptionsModal(true)}>
-              <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
-            </TouchableOpacity>
+            {!showAllLists && (
+              <TouchableOpacity style={styles.headerButton} onPress={() => setShowOptionsModal(true)}>
+                <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
         
