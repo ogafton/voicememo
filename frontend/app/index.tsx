@@ -292,22 +292,56 @@ export default function TodoApp() {
   };
 
   const addTodo = async () => {
-    if (!inputText.trim() || !selectedList) return;
+    if (!inputText.trim()) return;
+    
+    // Parse the voice command
+    const parsed = parseVoiceCommand(inputText, lists);
+    
+    // Determine target list
+    let targetList = selectedList;
+    if (parsed.listName) {
+      const matchedList = lists.find(l => 
+        l.name.toLowerCase() === parsed.listName?.toLowerCase()
+      );
+      if (matchedList) {
+        targetList = matchedList;
+      }
+    }
+    
+    if (!targetList) return;
+    
+    // Determine priority
+    const finalPriority = parsed.priority || selectedPriority;
+    
+    // Get task text
+    const taskText = parsed.taskText || inputText.trim();
+    
+    if (!taskText) return;
     
     try {
       const response = await fetch(`${API_URL}/api/todos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: inputText.trim(),
-          priority: selectedPriority,
-          list_id: selectedList.id,
+          text: taskText,
+          priority: finalPriority,
+          list_id: targetList.id,
         }),
       });
       
       if (response.ok) {
         const newTodo = await response.json();
-        setTodos([newTodo, ...todos]);
+        
+        // If added to current list, update todos
+        if (targetList.id === selectedList?.id) {
+          setTodos([newTodo, ...todos]);
+        }
+        
+        // Update priority if it was detected from voice
+        if (parsed.priority) {
+          setSelectedPriority(parsed.priority);
+        }
+        
         setInputText('');
         Keyboard.dismiss();
       }
