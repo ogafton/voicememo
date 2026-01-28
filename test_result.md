@@ -260,15 +260,13 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Create todo (POST /api/todos)"
-    - "Get todos (GET /api/todos)"
-    - "Toggle todo completion (PUT /api/todos/{id}/toggle)"
-    - "Delete todo (DELETE /api/todos/{id})"
+  current_focus: []
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
     message: "Initial implementation of To Do List app complete. Backend has all CRUD endpoints. Frontend has list display, filtering, voice input, and priority selection. Please test all backend endpoints first."
+  - agent: "testing"
+    message: "✅ BACKEND TESTING COMPLETE: All 5 API endpoints tested and working perfectly. Created comprehensive test suite (backend_test.py) that validates: POST /api/todos (create with priorities), GET /api/todos (retrieve sorted), PUT /api/todos/{id} (update), PUT /api/todos/{id}/toggle (completion toggle), DELETE /api/todos/{id} (delete with error handling). All tests passed 6/6. Backend is production-ready."
