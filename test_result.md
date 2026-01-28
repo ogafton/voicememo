@@ -107,63 +107,78 @@ user_problem_statement: "To Do List app cu comandă vocală pentru adăugarea ta
 backend:
   - task: "Create todo (POST /api/todos)"
     implemented: true
-    working: NA
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: NA
         agent: "main"
         comment: "Implemented POST endpoint for creating todos with text and priority"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Created 4 todos with different priorities (urgent, normal, low). All todos created successfully with correct structure and priority validation. Default priority 'normal' works correctly."
 
   - task: "Get todos (GET /api/todos)"
     implemented: true
-    working: NA
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: NA
         agent: "main"
         comment: "Implemented GET endpoint to list all todos sorted by created_at desc"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Retrieved todos successfully. Verified correct sorting by created_at (descending). All todos have proper structure with required fields (id, text, priority, completed, created_at, updated_at)."
 
   - task: "Update todo (PUT /api/todos/{id})"
     implemented: true
-    working: NA
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: NA
         agent: "main"
         comment: "Implemented PUT endpoint for updating todo text/priority/completed"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Updated todo with new text, priority (urgent), and completed status. All fields updated correctly and validated in response."
 
   - task: "Toggle todo completion (PUT /api/todos/{id}/toggle)"
     implemented: true
-    working: NA
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: NA
         agent: "main"
         comment: "Implemented toggle endpoint to mark todos as complete/incomplete"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Toggle functionality works perfectly. First toggle set completed=true, second toggle set completed=false. Both operations successful."
 
   - task: "Delete todo (DELETE /api/todos/{id})"
     implemented: true
-    working: NA
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: NA
         agent: "main"
         comment: "Implemented DELETE endpoint for removing todos"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Delete functionality works correctly. Todo deleted successfully and confirmed removal from database. Error handling tested - returns 404 for non-existent todos."
 
 frontend:
   - task: "Todo list display with filters"
