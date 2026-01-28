@@ -9,15 +9,16 @@ import {
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
-  Alert,
   Keyboard,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
-// Color palette - Modern minimalist with pleasant colors
+// Color palette
 const COLORS = {
   background: '#1a1a2e',
   cardBackground: '#16213e',
@@ -32,10 +33,19 @@ const COLORS = {
   completed: '#6c757d',
   white: '#ffffff',
   recording: '#ff4757',
+  modalBackground: 'rgba(0,0,0,0.7)',
 };
+
+interface TodoList {
+  id: string;
+  name: string;
+  is_default: boolean;
+  created_at: string;
+}
 
 interface Todo {
   id: string;
+  list_id: string;
   text: string;
   priority: 'urgent' | 'normal' | 'low';
   completed: boolean;
@@ -43,44 +53,38 @@ interface Todo {
 }
 
 export default function TodoApp() {
+  const [lists, setLists] = useState<TodoList[]>([]);
+  const [selectedList, setSelectedList] = useState<TodoList | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [inputText, setInputText] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<'urgent' | 'normal' | 'low'>('normal');
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const [speechSupported, setSpeechSupported] = useState(false);
+  const [showListModal, setShowListModal] = useState(false);
+  const [showNewListModal, setShowNewListModal] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
   
   const recognitionRef = useRef<any>(null);
 
-  // Initialize Speech Recognition for Web only
+  // Initialize Speech Recognition for Web
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       try {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        
         if (SpeechRecognition) {
           const recognition = new SpeechRecognition();
           recognition.continuous = false;
           recognition.interimResults = true;
           recognition.lang = 'ro-RO';
-          
           recognition.onresult = (event: any) => {
             const transcript = event.results[event.results.length - 1][0].transcript;
             setInputText(transcript);
           };
-          
-          recognition.onend = () => {
-            setIsRecording(false);
-          };
-          
-          recognition.onerror = (event: any) => {
-            console.log('Speech recognition error:', event.error);
-            setIsRecording(false);
-          };
-          
+          recognition.onend = () => setIsRecording(false);
+          recognition.onerror = () => setIsRecording(false);
           recognitionRef.current = recognition;
-          setSpeechSupported(true);
         }
       } catch (error) {
         console.log('Speech init error:', error);
@@ -88,27 +92,129 @@ export default function TodoApp() {
     }
   }, []);
 
-  // Fetch todos on mount
+  // Fetch lists and todos on mount
   useEffect(() => {
-    fetchTodos();
+    fetchLists();
   }, []);
 
-  const fetchTodos = async () => {
+  // Fetch todos when selected list changes
+  useEffect(() => {
+    if (selectedList) {
+      fetchTodos(selectedList.id);
+    }
+  }, [selectedList]);
+
+  const fetchLists = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/todos`);
+      const response = await fetch(`${API_URL}/api/lists`);
+      if (response.ok) {
+        const data = await response.json();
+        setLists(data);
+        // Select default list or first list
+        const defaultList = data.find((l: TodoList) => l.is_default) || data[0];
+        if (defaultList) {
+          setSelectedList(defaultList);
+        }
+      }
+    } catch (error) {
+      console.log('Error fetching lists:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchTodos = async (listId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/todos?list_id=${listId}`);
       if (response.ok) {
         const data = await response.json();
         setTodos(data);
       }
     } catch (error) {
       console.log('Error fetching todos:', error);
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const createList = async () => {
+    if (!newListName.trim()) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/lists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newListName.trim() }),
+      });
+      
+      if (response.ok) {
+        const newList = await response.json();
+        setLists([...lists, newList]);
+        setSelectedList(newList);
+        setNewListName('');
+        setShowNewListModal(false);
+      }
+    } catch (error) {
+      console.log('Error creating list:', error);
+    }
+  };
+
+  const setDefaultList = async (listId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/lists/${listId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_default: true }),
+      });
+      
+      if (response.ok) {
+        // Update local state
+        setLists(lists.map(l => ({
+          ...l,
+          is_default: l.id === listId
+        })));
+      }
+    } catch (error) {
+      console.log('Error setting default list:', error);
+    }
+  };
+
+  const clearList = async () => {
+    if (!selectedList) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/lists/${selectedList.id}/clear`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setTodos([]);
+        setShowOptionsModal(false);
+      }
+    } catch (error) {
+      console.log('Error clearing list:', error);
+    }
+  };
+
+  const deleteList = async (listId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/lists/${listId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        const newLists = lists.filter(l => l.id !== listId);
+        setLists(newLists);
+        if (selectedList?.id === listId) {
+          setSelectedList(newLists[0] || null);
+        }
+        setShowListModal(false);
+      }
+    } catch (error) {
+      console.log('Error deleting list:', error);
     }
   };
 
   const addTodo = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !selectedList) return;
     
     try {
       const response = await fetch(`${API_URL}/api/todos`, {
@@ -117,6 +223,7 @@ export default function TodoApp() {
         body: JSON.stringify({
           text: inputText.trim(),
           priority: selectedPriority,
+          list_id: selectedList.id,
         }),
       });
       
@@ -128,7 +235,6 @@ export default function TodoApp() {
       }
     } catch (error) {
       console.log('Error adding todo:', error);
-      Alert.alert('Eroare', 'Nu s-a putut adăuga task-ul');
     }
   };
 
@@ -161,63 +267,19 @@ export default function TodoApp() {
     }
   };
 
-  const confirmDelete = (id: string, text: string) => {
-    if (Platform.OS === 'web') {
-      // Use browser confirm on web
-      const confirmed = window.confirm(`Sigur vrei să ștergi "${text}"?`);
-      if (confirmed) {
-        deleteTodo(id);
-      }
-    } else {
-      // Use native Alert on mobile
-      Alert.alert(
-        'Șterge Task',
-        `Sigur vrei să ștergi "${text}"?`,
-        [
-          { text: 'Anulează', style: 'cancel' },
-          { text: 'Șterge', style: 'destructive', onPress: () => deleteTodo(id) },
-        ]
-      );
-    }
-  };
-
-  // Voice recognition function - Web only for now
   const handleVoiceButton = () => {
-    if (Platform.OS === 'web') {
-      if (!recognitionRef.current) {
-        Alert.alert(
-          'Funcție indisponibilă',
-          'Recunoașterea vocală nu este disponibilă în acest browser.\n\nPentru comandă vocală:\n• Folosește Chrome sau Edge\n• Sau instalează aplicația pe telefon'
-        );
-        return;
-      }
-      
+    if (Platform.OS === 'web' && recognitionRef.current) {
       if (isRecording) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {
-          console.log('Stop error:', e);
-        }
+        recognitionRef.current.stop();
         setIsRecording(false);
       } else {
         try {
           recognitionRef.current.start();
           setIsRecording(true);
-        } catch (error: any) {
-          console.log('Error starting recognition:', error);
+        } catch (error) {
           setIsRecording(false);
-          Alert.alert(
-            'Info', 
-            'Apasă pe butonul de microfon și vorbește.\n\nDacă nu funcționează, permite accesul la microfon din setările browser-ului.'
-          );
         }
       }
-    } else {
-      // Native - show info about future support
-      Alert.alert(
-        'Comandă vocală',
-        'Pentru a folosi comanda vocală pe telefon, trebuie să instalezi aplicația.\n\nMomentum, poți adăuga task-uri manual.'
-      );
     }
   };
 
@@ -246,47 +308,28 @@ export default function TodoApp() {
   });
 
   const renderTodoItem = ({ item }: { item: Todo }) => (
-    <View style={[
-      styles.todoItem,
-      item.completed && styles.todoItemCompleted
-    ]}>
-      <TouchableOpacity
-        style={styles.checkbox}
-        onPress={() => toggleTodo(item.id)}
-      >
+    <View style={[styles.todoItem, item.completed && styles.todoItemCompleted]}>
+      <TouchableOpacity style={styles.checkbox} onPress={() => toggleTodo(item.id)}>
         <View style={[
           styles.checkboxInner,
           item.completed && styles.checkboxChecked,
           { borderColor: getPriorityColor(item.priority) }
         ]}>
-          {item.completed && (
-            <Ionicons name="checkmark" size={16} color={COLORS.white} />
-          )}
+          {item.completed && <Ionicons name="checkmark" size={16} color={COLORS.white} />}
         </View>
       </TouchableOpacity>
       
       <View style={styles.todoContent}>
-        <Text style={[
-          styles.todoText,
-          item.completed && styles.todoTextCompleted
-        ]}>
+        <Text style={[styles.todoText, item.completed && styles.todoTextCompleted]}>
           {item.text}
         </Text>
         <View style={styles.priorityBadge}>
-          <View style={[
-            styles.priorityDot,
-            { backgroundColor: getPriorityColor(item.priority) }
-          ]} />
-          <Text style={styles.priorityText}>
-            {getPriorityLabel(item.priority)}
-          </Text>
+          <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(item.priority) }]} />
+          <Text style={styles.priorityText}>{getPriorityLabel(item.priority)}</Text>
         </View>
       </View>
       
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => confirmDelete(item.id, item.text)}
-      >
+      <TouchableOpacity style={styles.deleteButton} onPress={() => deleteTodo(item.id)}>
         <Ionicons name="trash-outline" size={22} color={COLORS.urgent} />
       </TouchableOpacity>
     </View>
@@ -309,31 +352,33 @@ export default function TodoApp() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {/* Header */}
+        {/* Header with List Selector */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Lista de Task-uri</Text>
-          <Text style={styles.headerSubtitle}>
-            {todos.filter(t => !t.completed).length} task-uri rămase
-          </Text>
+          <TouchableOpacity style={styles.listSelector} onPress={() => setShowListModal(true)}>
+            <Text style={styles.headerTitle}>{selectedList?.name || 'Selectează listă'}</Text>
+            <Ionicons name="chevron-down" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerButton} onPress={() => setShowOptionsModal(true)}>
+              <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
         </View>
+        
+        <Text style={styles.headerSubtitle}>
+          {todos.filter(t => !t.completed).length} task-uri rămase
+        </Text>
 
         {/* Filter Tabs */}
         <View style={styles.filterContainer}>
           {(['all', 'active', 'completed'] as const).map((filterOption) => (
             <TouchableOpacity
               key={filterOption}
-              style={[
-                styles.filterTab,
-                filter === filterOption && styles.filterTabActive
-              ]}
+              style={[styles.filterTab, filter === filterOption && styles.filterTabActive]}
               onPress={() => setFilter(filterOption)}
             >
-              <Text style={[
-                styles.filterText,
-                filter === filterOption && styles.filterTextActive
-              ]}>
-                {filterOption === 'all' ? 'Toate' : 
-                 filterOption === 'active' ? 'Active' : 'Complete'}
+              <Text style={[styles.filterText, filter === filterOption && styles.filterTextActive]}>
+                {filterOption === 'all' ? 'Toate' : filterOption === 'active' ? 'Active' : 'Complete'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -361,16 +406,13 @@ export default function TodoApp() {
 
         {/* Input Section */}
         <View style={styles.inputSection}>
-          {/* Priority Selector */}
           <View style={styles.prioritySelector}>
             {(['urgent', 'normal', 'low'] as const).map((priority) => (
               <TouchableOpacity
                 key={priority}
                 style={[
                   styles.priorityButton,
-                  selectedPriority === priority && {
-                    backgroundColor: getPriorityColor(priority),
-                  }
+                  selectedPriority === priority && { backgroundColor: getPriorityColor(priority) }
                 ]}
                 onPress={() => setSelectedPriority(priority)}
               >
@@ -384,15 +426,10 @@ export default function TodoApp() {
             ))}
           </View>
 
-          {/* Input Row */}
           <View style={styles.inputRow}>
             <TouchableOpacity
-              style={[
-                styles.voiceButton,
-                isRecording && styles.voiceButtonRecording
-              ]}
+              style={[styles.voiceButton, isRecording && styles.voiceButtonRecording]}
               onPress={handleVoiceButton}
-              activeOpacity={0.7}
             >
               <Ionicons
                 name={isRecording ? 'stop' : 'mic'}
@@ -403,7 +440,7 @@ export default function TodoApp() {
             
             <TextInput
               style={styles.input}
-              placeholder={isRecording ? 'Ascult... vorbește acum!' : 'Adaugă un task nou...'}
+              placeholder={isRecording ? 'Ascult...' : 'Adaugă un task nou...'}
               placeholderTextColor={isRecording ? COLORS.recording : COLORS.textSecondary}
               value={inputText}
               onChangeText={setInputText}
@@ -412,19 +449,14 @@ export default function TodoApp() {
             />
             
             <TouchableOpacity
-              style={[
-                styles.addButton,
-                !inputText.trim() && styles.addButtonDisabled
-              ]}
+              style={[styles.addButton, !inputText.trim() && styles.addButtonDisabled]}
               onPress={addTodo}
               disabled={!inputText.trim()}
-              activeOpacity={0.7}
             >
               <Ionicons name="add" size={28} color={COLORS.white} />
             </TouchableOpacity>
           </View>
 
-          {/* Voice recording indicator */}
           {isRecording && (
             <View style={styles.recordingIndicator}>
               <View style={styles.recordingDot} />
@@ -432,6 +464,156 @@ export default function TodoApp() {
             </View>
           )}
         </View>
+
+        {/* List Selection Modal */}
+        <Modal visible={showListModal} transparent animationType="fade">
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowListModal(false)}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Listele tale</Text>
+              
+              <ScrollView style={styles.listScrollView}>
+                {lists.map((list) => (
+                  <View key={list.id} style={styles.listItemRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.listItem,
+                        selectedList?.id === list.id && styles.listItemSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedList(list);
+                        setShowListModal(false);
+                      }}
+                    >
+                      <View style={styles.listItemContent}>
+                        <Text style={styles.listItemText}>{list.name}</Text>
+                        {list.is_default && (
+                          <View style={styles.defaultBadge}>
+                            <Text style={styles.defaultBadgeText}>Default</Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {!list.is_default && (
+                      <TouchableOpacity
+                        style={styles.setDefaultButton}
+                        onPress={() => setDefaultList(list.id)}
+                      >
+                        <Ionicons name="star-outline" size={20} color={COLORS.normal} />
+                      </TouchableOpacity>
+                    )}
+                    
+                    {lists.length > 1 && !list.is_default && (
+                      <TouchableOpacity
+                        style={styles.deleteListButton}
+                        onPress={() => deleteList(list.id)}
+                      >
+                        <Ionicons name="close" size={20} color={COLORS.urgent} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+              
+              <TouchableOpacity
+                style={styles.newListButton}
+                onPress={() => {
+                  setShowListModal(false);
+                  setShowNewListModal(true);
+                }}
+              >
+                <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+                <Text style={styles.newListButtonText}>Listă nouă</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* New List Modal */}
+        <Modal visible={showNewListModal} transparent animationType="fade">
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowNewListModal(false)}
+          >
+            <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+              <Text style={styles.modalTitle}>Listă nouă</Text>
+              
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Numele listei..."
+                placeholderTextColor={COLORS.textSecondary}
+                value={newListName}
+                onChangeText={setNewListName}
+                autoFocus
+              />
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => {
+                    setNewListName('');
+                    setShowNewListModal(false);
+                  }}
+                >
+                  <Text style={styles.modalCancelText}>Anulează</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.modalConfirmButton, !newListName.trim() && styles.modalButtonDisabled]}
+                  onPress={createList}
+                  disabled={!newListName.trim()}
+                >
+                  <Text style={styles.modalConfirmText}>Creează</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Options Modal */}
+        <Modal visible={showOptionsModal} transparent animationType="fade">
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowOptionsModal(false)}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Opțiuni listă</Text>
+              
+              <TouchableOpacity style={styles.optionItem} onPress={clearList}>
+                <Ionicons name="trash-outline" size={24} color={COLORS.urgent} />
+                <Text style={styles.optionText}>Golește lista</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.optionItem} 
+                onPress={() => {
+                  setShowOptionsModal(false);
+                  setShowNewListModal(true);
+                }}
+              >
+                <Ionicons name="add-circle-outline" size={24} color={COLORS.normal} />
+                <Text style={styles.optionText}>Creează listă nouă</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.optionItem} 
+                onPress={() => {
+                  setShowOptionsModal(false);
+                  setShowListModal(true);
+                }}
+              >
+                <Ionicons name="list-outline" size={24} color={COLORS.text} />
+                <Text style={styles.optionText}>Schimbă lista</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -456,19 +638,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 10,
+  },
+  listSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.text,
+    marginRight: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+  },
+  headerButton: {
+    padding: 8,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.textSecondary,
+    paddingHorizontal: 20,
     marginTop: 4,
+    marginBottom: 12,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -649,5 +847,139 @@ const styles = StyleSheet.create({
     color: COLORS.recording,
     fontSize: 14,
     fontWeight: '500',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.modalBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.cardBackground,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 350,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  listScrollView: {
+    maxHeight: 300,
+  },
+  listItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  listItem: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+  },
+  listItemSelected: {
+    backgroundColor: COLORS.primary,
+  },
+  listItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listItemText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  defaultBadge: {
+    backgroundColor: COLORS.normal,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    color: COLORS.white,
+    fontWeight: 'bold',
+  },
+  setDefaultButton: {
+    padding: 12,
+    marginLeft: 4,
+  },
+  deleteListButton: {
+    padding: 12,
+  },
+  newListButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+  },
+  newListButtonText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  modalInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 16,
+    color: COLORS.text,
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    padding: 14,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: COLORS.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalConfirmButton: {
+    flex: 1,
+    padding: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalConfirmText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  optionText: {
+    color: COLORS.text,
+    fontSize: 16,
+    marginLeft: 12,
   },
 });
