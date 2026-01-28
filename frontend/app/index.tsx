@@ -176,12 +176,14 @@ export default function TodoApp() {
     fetchLists();
   }, []);
 
-  // Fetch todos when selected list changes
+  // Fetch todos when selected list changes or showAllLists changes
   useEffect(() => {
-    if (selectedList) {
+    if (showAllLists) {
+      fetchAllTodos();
+    } else if (selectedList) {
       fetchTodos(selectedList.id);
     }
-  }, [selectedList]);
+  }, [selectedList, showAllLists]);
 
   const fetchLists = async () => {
     try {
@@ -211,6 +213,18 @@ export default function TodoApp() {
       }
     } catch (error) {
       console.log('Error fetching todos:', error);
+    }
+  };
+
+  const fetchAllTodos = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/todos`);
+      if (response.ok) {
+        const data = await response.json();
+        setTodos(data);
+      }
+    } catch (error) {
+      console.log('Error fetching all todos:', error);
     }
   };
 
