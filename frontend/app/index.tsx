@@ -857,6 +857,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   modalContent: {
     backgroundColor: COLORS.cardBackground,
     borderRadius: 20,
