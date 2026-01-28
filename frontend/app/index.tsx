@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
-import * as Speech from 'expo-speech';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
-// Color palette
+// Color palette - Modern minimalist with pleasant colors
 const COLORS = {
   background: '#1a1a2e',
   cardBackground: '#16213e',
@@ -33,6 +35,7 @@ const COLORS = {
   low: '#95afc0',
   completed: '#6c757d',
   white: '#ffffff',
+  recording: '#ff4757',
 };
 
 interface Todo {
@@ -49,8 +52,34 @@ export default function TodoApp() {
   const [selectedPriority, setSelectedPriority] = useState<'urgent' | 'normal' | 'low'>('normal');
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+
+  // Speech recognition events
+  useSpeechRecognitionEvent('start', () => {
+    setIsRecording(true);
+  });
+
+  useSpeechRecognitionEvent('end', () => {
+    setIsRecording(false);
+  });
+
+  useSpeechRecognitionEvent('result', (event) => {
+    const transcript = event.results[0]?.transcript || '';
+    if (transcript) {
+      setInputText(transcript);
+    }
+  });
+
+  useSpeechRecognitionEvent('error', (event) => {
+    console.log('Speech recognition error:', event.error);
+    setIsRecording(false);
+    if (event.error === 'not-allowed') {
+      Alert.alert(
+        'Permisiune necesară',
+        'Te rugăm să permiți accesul la microfon pentru a folosi comanda vocală.'
+      );
+    }
+  });
 
   // Fetch todos on mount
   useEffect(() => {
@@ -136,66 +165,30 @@ export default function TodoApp() {
     );
   };
 
-  // Voice recording functions
-  const startRecording = async () => {
-    try {
-      // Request permissions
-      const permission = await Audio.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert('Permisiune necesară', 'Te rugăm să permiți accesul la microfon pentru a folosi comanda vocală.');
+  // Voice recognition function
+  const handleVoiceButton = async () => {
+    if (isRecording) {
+      // Stop recording
+      ExpoSpeechRecognitionModule.stop();
+    } else {
+      // Request permissions first
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      
+      if (!result.granted) {
+        Alert.alert(
+          'Permisiune necesară',
+          'Te rugăm să permiți accesul la microfon pentru a folosi comanda vocală.'
+        );
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      // Start recording with Romanian language
+      ExpoSpeechRecognitionModule.start({
+        lang: 'ro-RO',
+        interimResults: true,
+        maxAlternatives: 1,
+        continuous: false,
       });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      
-      setRecording(newRecording);
-      setIsRecording(true);
-    } catch (error) {
-      console.log('Error starting recording:', error);
-      Alert.alert('Eroare', 'Nu s-a putut porni înregistrarea');
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!recording) return;
-    
-    try {
-      setIsRecording(false);
-      await recording.stopAndUnloadAsync();
-      
-      // For demo purposes, we'll show a prompt for the user to type
-      // In production, you would send the audio to a speech-to-text API
-      Alert.alert(
-        'Înregistrare completă',
-        'Scrie textul task-ului pe care l-ai dictat:',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Focus on input field
-            }
-          }
-        ]
-      );
-      
-      setRecording(null);
-    } catch (error) {
-      console.log('Error stopping recording:', error);
-    }
-  };
-
-  const handleVoiceButton = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
     }
   };
 
@@ -380,8 +373,8 @@ export default function TodoApp() {
             
             <TextInput
               style={styles.input}
-              placeholder="Adaugă un task nou..."
-              placeholderTextColor={COLORS.textSecondary}
+              placeholder={isRecording ? 'Ascult...' : 'Adaugă un task nou...'}
+              placeholderTextColor={isRecording ? COLORS.recording : COLORS.textSecondary}
               value={inputText}
               onChangeText={setInputText}
               onSubmitEditing={addTodo}
@@ -399,6 +392,14 @@ export default function TodoApp() {
               <Ionicons name="add" size={28} color={COLORS.white} />
             </TouchableOpacity>
           </View>
+
+          {/* Voice recording indicator */}
+          {isRecording && (
+            <View style={styles.recordingIndicator}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingText}>Înregistrez... Vorbește acum!</Text>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -577,7 +578,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   voiceButtonRecording: {
-    backgroundColor: COLORS.urgent,
+    backgroundColor: COLORS.recording,
   },
   input: {
     flex: 1,
@@ -599,5 +600,23 @@ const styles = StyleSheet.create({
   addButtonDisabled: {
     backgroundColor: COLORS.secondary,
     opacity: 0.5,
+  },
+  recordingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.recording,
+    marginRight: 8,
+  },
+  recordingText: {
+    color: COLORS.recording,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
