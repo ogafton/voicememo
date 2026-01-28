@@ -241,13 +241,14 @@ export default function TodoApp() {
       const response = await fetch(`${API_URL}/api/lists`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newListName.trim() }),
+        body: JSON.stringify({ name: newListName.trim(), color: newListColor }),
       });
       
       if (response.ok) {
         const newList = await response.json();
         setLists([...lists, newList]);
         setSelectedList(newList);
+        setShowAllLists(false);
         setNewListName('');
         setShowNewListModal(false);
       }
