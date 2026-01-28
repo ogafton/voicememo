@@ -42,30 +42,6 @@ interface Todo {
   created_at: string;
 }
 
-// Web Speech API types
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean;
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
 export default function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [inputText, setInputText] = useState('');
@@ -73,48 +49,67 @@ export default function TodoApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const [speechSupported, setSpeechSupported] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
   
   const recognitionRef = useRef<any>(null);
 
-  // Initialize Web Speech API for web platform
+  // Initialize Speech Recognition
   useEffect(() => {
+    initializeSpeechRecognition();
+  }, []);
+
+  const initializeSpeechRecognition = async () => {
     if (Platform.OS === 'web') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        setSpeechSupported(true);
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = 'ro-RO';
-        
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-          const transcript = event.results[event.results.length - 1][0].transcript;
-          setInputText(transcript);
-        };
-        
-        recognition.onend = () => {
-          setIsRecording(false);
-        };
-        
-        recognition.onerror = (event: any) => {
-          console.log('Speech recognition error:', event.error);
-          setIsRecording(false);
-          if (event.error === 'not-allowed') {
-            Alert.alert(
-              'Permisiune necesară',
-              'Te rugăm să permiți accesul la microfon din setările browser-ului.'
-            );
+      // Check if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        try {
+          const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+          
+          if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'ro-RO';
+            
+            recognition.onresult = (event: any) => {
+              const transcript = event.results[event.results.length - 1][0].transcript;
+              setInputText(transcript);
+            };
+            
+            recognition.onend = () => {
+              setIsRecording(false);
+            };
+            
+            recognition.onerror = (event: any) => {
+              console.log('Speech recognition error:', event.error);
+              setIsRecording(false);
+            };
+            
+            recognitionRef.current = recognition;
+            setSpeechSupported(true);
+          } else {
+            setSpeechSupported(false);
           }
-        };
-        
-        recognitionRef.current = recognition;
+        } catch (error) {
+          console.log('Speech init error:', error);
+          setSpeechSupported(false);
+        }
+      } else {
+        setSpeechSupported(false);
       }
     } else {
-      // For native platforms, we'll use expo-speech-recognition
-      setSpeechSupported(true);
+      // Native platform - check if expo-speech-recognition is available
+      try {
+        const { ExpoSpeechRecognitionModule } = await import('expo-speech-recognition');
+        if (ExpoSpeechRecognitionModule) {
+          setSpeechSupported(true);
+        }
+      } catch (error) {
+        console.log('Native speech not available:', error);
+        setSpeechSupported(false);
+      }
     }
-  }, []);
+  };
 
   // Fetch todos on mount
   useEffect(() => {
@@ -207,27 +202,39 @@ export default function TodoApp() {
       if (!recognitionRef.current) {
         Alert.alert(
           'Funcție indisponibilă',
-          'Browser-ul tău nu suportă recunoașterea vocală. Încearcă Chrome sau Edge.'
+          'Recunoașterea vocală nu este disponibilă în acest browser.\n\nÎncearcă:\n• Chrome sau Edge pe desktop\n• Sau folosește aplicația pe telefon prin Expo Go'
         );
         return;
       }
       
       if (isRecording) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.log('Stop error:', e);
+        }
         setIsRecording(false);
       } else {
         try {
           recognitionRef.current.start();
           setIsRecording(true);
-        } catch (error) {
+        } catch (error: any) {
           console.log('Error starting recognition:', error);
-          Alert.alert('Eroare', 'Nu s-a putut porni recunoașterea vocală.');
+          if (error.message?.includes('already started')) {
+            recognitionRef.current.stop();
+            setIsRecording(false);
+          } else {
+            Alert.alert(
+              'Permisiune necesară', 
+              'Te rugăm să permiți accesul la microfon din setările browser-ului.'
+            );
+          }
         }
       }
     } else {
       // Native platform - use expo-speech-recognition
       try {
-        const { ExpoSpeechRecognitionModule } = await import('expo-speech-recognition');
+        const { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } = await import('expo-speech-recognition');
         
         if (isRecording) {
           ExpoSpeechRecognitionModule.stop();
@@ -243,6 +250,7 @@ export default function TodoApp() {
             return;
           }
 
+          // Set up result listener
           ExpoSpeechRecognitionModule.start({
             lang: 'ro-RO',
             interimResults: true,
@@ -253,7 +261,10 @@ export default function TodoApp() {
         }
       } catch (error) {
         console.log('Native speech recognition error:', error);
-        Alert.alert('Eroare', 'Recunoașterea vocală nu este disponibilă pe acest dispozitiv.');
+        Alert.alert(
+          'Funcție indisponibilă', 
+          'Recunoașterea vocală nu este disponibilă.\n\nPoți adăuga task-uri manual folosind câmpul de text.'
+        );
       }
     }
   };
@@ -426,7 +437,8 @@ export default function TodoApp() {
             <TouchableOpacity
               style={[
                 styles.voiceButton,
-                isRecording && styles.voiceButtonRecording
+                isRecording && styles.voiceButtonRecording,
+                speechSupported === false && styles.voiceButtonDisabled
               ]}
               onPress={handleVoiceButton}
               activeOpacity={0.7}
@@ -434,13 +446,13 @@ export default function TodoApp() {
               <Ionicons
                 name={isRecording ? 'stop' : 'mic'}
                 size={24}
-                color={isRecording ? COLORS.white : COLORS.primary}
+                color={isRecording ? COLORS.white : (speechSupported === false ? COLORS.textSecondary : COLORS.primary)}
               />
             </TouchableOpacity>
             
             <TextInput
               style={styles.input}
-              placeholder={isRecording ? 'Ascult...' : 'Adaugă un task nou...'}
+              placeholder={isRecording ? 'Ascult... vorbește acum!' : 'Adaugă un task nou...'}
               placeholderTextColor={isRecording ? COLORS.recording : COLORS.textSecondary}
               value={inputText}
               onChangeText={setInputText}
@@ -647,6 +659,9 @@ const styles = StyleSheet.create({
   },
   voiceButtonRecording: {
     backgroundColor: COLORS.recording,
+  },
+  voiceButtonDisabled: {
+    opacity: 0.5,
   },
   input: {
     flex: 1,
