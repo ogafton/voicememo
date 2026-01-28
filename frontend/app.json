@@ -1,24 +1,26 @@
 {
   "expo": {
     "name": "To Do List",
-    "slug": "frontend",
+    "slug": "todolist",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "todolist",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.todolist.app",
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Pentru a adăuga task-uri prin voce",
         "NSMicrophoneUsageDescription": "Pentru a înregistra vocea ta"
       }
     },
     "android": {
+      "package": "com.todolist.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000"
+        "backgroundColor": "#1a1a2e"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
@@ -38,7 +40,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000"
+          "backgroundColor": "#1a1a2e"
         }
       ],
       [
