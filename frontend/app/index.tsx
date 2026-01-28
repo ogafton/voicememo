@@ -36,11 +36,16 @@ const COLORS = {
   modalBackground: 'rgba(0,0,0,0.7)',
 };
 
+// Available colors for lists
+const LIST_COLORS = ['#e94560', '#4ecdc4', '#95afc0', '#ff6b6b', '#a29bfe', '#fd79a8', '#00b894', '#fdcb6e', '#6c5ce7', '#00cec9'];
+
 interface TodoList {
   id: string;
   name: string;
+  color: string;
   is_default: boolean;
   created_at: string;
+  active_count?: number;
 }
 
 interface Todo {
