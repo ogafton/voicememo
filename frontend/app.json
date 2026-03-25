@@ -49,7 +49,9 @@
           "microphonePermission": "Pentru a adăuga task-uri prin voce",
           "speechRecognitionPermission": "Pentru recunoașterea vocală"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
