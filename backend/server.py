@@ -83,15 +83,23 @@ async def ensure_default_list():
 async def get_lists():
     await ensure_default_list()
     lists = await db.lists.find().sort("created_at", 1).to_list(100)
+    
+    # Get all active counts in a single aggregation query (fixes N+1)
+    active_counts_pipeline = [
+        {"$match": {"completed": False}},
+        {"$group": {"_id": "$list_id", "count": {"$sum": 1}}}
+    ]
+    active_counts_result = await db.todos.aggregate(active_counts_pipeline).to_list(100)
+    active_counts = {item["_id"]: item["count"] for item in active_counts_result}
+    
     result = []
     for i, lst in enumerate(lists):
         # Add default color if missing
         if "color" not in lst:
             lst["color"] = LIST_COLORS[i % len(LIST_COLORS)]
-        # Get active task count for this list
-        active_count = await db.todos.count_documents({"list_id": lst["id"], "completed": False})
         lst_data = TodoList(**lst).dict()
-        lst_data["active_count"] = active_count
+        # Use pre-fetched count instead of separate query
+        lst_data["active_count"] = active_counts.get(lst["id"], 0)
         result.append(lst_data)
     return result
 
